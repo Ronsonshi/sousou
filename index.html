@@ -70,7 +70,6 @@
     .hint { padding: 0 16px 16px; font-size: 12px; color: #6b6b75; line-height: 1.6; }
     .hint b { color: #a5b4fc; }
 
-    /* 站点分类 */
     .section { padding: 8px 16px 8px; }
     .section-title { font-size: 12px; color: #8b8b95; margin: 16px 4px 10px; display: flex; align-items: center; gap: 6px; }
     .section-title .dot { width: 6px; height: 6px; border-radius: 50%; }
@@ -104,7 +103,6 @@
     }
     .site.active .check { background: #6366f1; border-color: #6366f1; }
 
-    /* 操作栏 */
     .actions {
       display: flex; gap: 10px; padding: 16px;
       position: sticky; bottom: 0;
@@ -155,7 +153,7 @@
 
   <div class="hint">
     💡 输入关键词后，<b>点选你想搜的站点</b>，再点"开始搜索"，会<b>在新标签页同时打开</b>这些站点的搜索结果。
-    <br>📌 <b>点站名</b>可以直接打开该网站。
+    <br>📌 <b>长按</b>站点卡片 = 直接打开该网站首页。
   </div>
 
   <div class="section" id="siteSections"></div>
@@ -166,28 +164,22 @@
   </div>
 
 <script>
-  // ====== 站点配置（基于实际测试，亲测能用的）======
-  // 模板说明：{q} 会被替换为 URL 编码后的关键词
+  // ====== 站点配置（URL 模板都已实测 200 OK）======
+  // {q} 会被替换为 URL 编码后的关键词
   const SITES = [
     {
       group: '网盘类',
       color: '#6366f1',
       items: [
-        { name: '盘搜搜',     url: 'https://m.pansoso.com/search?keyword={q}', desc: '老牌聚合 · 资源全',     logo: '盘', bg: '#f59e0b' },
-        { name: '爱搜剧',     url: 'https://www.isouju.com/s/{q}.html',         desc: '7 大网盘聚合',         logo: '剧', bg: '#ec4899' },
-        { name: '搜夸克',     url: 'https://www.soquark.com/search?q={q}',      desc: '夸克资源最全',         logo: '夸', bg: '#0ea5e9' },
-        { name: '夸克搜',     url: 'https://www.pioz.cn/search?q={q}',          desc: '夸克网盘专项',         logo: 'Q', bg: '#06b6d4' },
-        { name: '极搜剧',     url: 'https://www.jisoju.com/search?q={q}',       desc: '综合网盘 · 影视',      logo: '极', bg: '#a855f7' },
-        { name: '盘友圈',     url: 'https://panyq.com/?keyword={q}',            desc: '阿里/百度/夸克',       logo: '友', bg: '#ef4444' },
-        { name: 'PanSeeker',  url: 'https://www.panseeker.com/search?q={q}',   desc: '学术+影视老牌',        logo: 'P', bg: '#10b981' },
-      ]
-    },
-    {
-      group: '磁力类',
-      color: '#ec4899',
-      items: [
-        { name: '开心磁力',   url: 'http://kxcili.com/?keyword={q}',            desc: '中文磁力 · 老牌',     logo: '磁', bg: '#f97316' },
-        { name: '磁力搜 cili',url: 'http://cilisousuo.co/?keyword={q}',         desc: '磁力聚合搜索',         logo: '搜', bg: '#eab308' },
+        // ✅ 验证过的 URL（pansoso 实际是 /?q=，不是 /search?keyword=）
+        { name: '盘搜搜',    url: 'https://m.pansoso.com/?q={q}',                 desc: '百度/夸克/阿里聚合', logo: '盘', bg: '#f59e0b' },
+        { name: '爱搜剧',    url: 'https://www.isouju.com/s/{q}.html',             desc: '7 大网盘聚合',      logo: '剧', bg: '#ec4899' },
+        // ✅ soquark 实际是 /s/keyword-1-0.html 或 /s/keyword.html
+        { name: '搜夸克',    url: 'https://www.soquark.com/s/{q}.html',            desc: '夸克资源最全',      logo: '夸', bg: '#0ea5e9' },
+        { name: '夸克搜',    url: 'https://www.pioz.cn/?q={q}',                    desc: '夸克网盘专项',      logo: 'Q', bg: '#06b6d4' },
+        { name: '极搜剧',    url: 'https://www.jisoju.com/s/{q}.html',             desc: '综合网盘 · 影视',   logo: '极', bg: '#a855f7' },
+        { name: '盘友圈',    url: 'https://panyq.com/?keyword={q}',                desc: '阿里/百度/夸克',    logo: '友', bg: '#ef4444' },
+        { name: '磁力-开心', url: 'http://kxcili.com/?keyword={q}',                desc: '中文磁力 · 老牌',   logo: '磁', bg: '#f97316' },
       ]
     }
   ];
@@ -206,7 +198,7 @@
       </div>
       <div class="site-list">
         ${g.items.map(s => `
-          <div class="site ${selected.has(s.name) ? 'active' : ''}" data-name="${s.name}" data-url="${s.url.replace('{q}', '___Q___')}">
+          <div class="site ${selected.has(s.name) ? 'active' : ''}" data-name="${s.name}" data-url="${s.url.replace('{q}', '___Q___')}" data-home="${s.url.split('{q}')[0]}">
             <div class="logo" style="background:${s.bg}">${s.logo}</div>
             <div class="info">
               <div class="name">${s.name}</div>
@@ -218,12 +210,11 @@
       </div>
     `).join('');
 
-    // 绑定事件
+    let pressTimer;
     document.querySelectorAll('.site').forEach(el => {
+      // 单击：切换选中
       el.addEventListener('click', e => {
         const name = el.dataset.name;
-        // 长按/单击 = 切换选中；单击 logo = 打开首页
-        // 这里统一单击切换选中；长按打开网站
         if (selected.has(name)) {
           selected.delete(name);
           el.classList.remove('active');
@@ -234,12 +225,14 @@
           el.querySelector('.check').textContent = '✓';
         }
       });
-      el.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        // 右键或长按直接打开该网站首页
-        const url = el.dataset.url.replace('___Q___', '').split('?')[0].split('/s/')[0];
-        window.open(url, '_blank');
+      // 长按 0.5s：打开该网站首页
+      el.addEventListener('touchstart', e => {
+        pressTimer = setTimeout(() => {
+          window.open(el.dataset.home, '_blank');
+        }, 500);
       });
+      el.addEventListener('touchend', e => clearTimeout(pressTimer));
+      el.addEventListener('touchmove', e => clearTimeout(pressTimer));
     });
   }
 
@@ -269,9 +262,7 @@
       }
     }));
 
-    if (opened > 0) {
-      showToast(`已打开 ${opened} 个站点的搜索结果`);
-    }
+    if (opened > 0) showToast(`已打开 ${opened} 个站点`);
   }
 
   function showToast(msg) {
