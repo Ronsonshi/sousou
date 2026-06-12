@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="资源聚合搜" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <title>资源聚合搜 · 一键多站同搜</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+      background: #0a0a0f;
+      color: #e8e8ea;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(at 20% 10%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
+        radial-gradient(at 80% 80%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(10, 10, 15, 0.75);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 14px 16px calc(14px + env(safe-area-inset-top)) 16px;
+      padding-top: calc(14px + env(safe-area-inset-top));
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+    .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #ec4899); box-shadow: 0 0 16px rgba(99, 102, 241, 0.6); }
+    .brand-sub { font-size: 11px; color: #8b8b95; font-weight: 400; margin-left: auto; }
+
+    .search-wrap { padding: 24px 16px 12px; }
+    .search-box {
+      display: flex; align-items: center;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 4px 4px 4px 14px;
+      transition: all 0.2s;
+    }
+    .search-box:focus-within {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.10);
+    }
+    .search-icon { color: #6b6b75; margin-right: 8px; flex-shrink: 0; }
+    .search-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: #e8e8ea; font-size: 16px; padding: 12px 4px;
+    }
+    .search-input::placeholder { color: #6b6b75; }
+    .search-btn {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; border: none; border-radius: 12px;
+      padding: 12px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: transform 0.1s, opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .search-btn:active { transform: scale(0.96); }
+
+    .hint { padding: 0 16px 16px; font-size: 12px; color: #6b6b75; line-height: 1.6; }
+    .hint b { color: #a5b4fc; }
+
+    /* 站点分类 */
+    .section { padding: 8px 16px 8px; }
+    .section-title { font-size: 12px; color: #8b8b95; margin: 16px 4px 10px; display: flex; align-items: center; gap: 6px; }
+    .section-title .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    .site-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .site {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .site:active { background: rgba(99, 102, 241, 0.15); transform: scale(0.98); }
+    .site.active { background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2)); border-color: rgba(99, 102, 241, 0.4); }
+    .site .logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .site .info { flex: 1; min-width: 0; }
+    .site .name { font-size: 14px; font-weight: 600; color: #f0f0f3; }
+    .site .desc { font-size: 11px; color: #8b8b95; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .site .check {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+    .site.active .check { background: #6366f1; border-color: #6366f1; }
+
+    /* 操作栏 */
+    .actions {
+      display: flex; gap: 10px; padding: 16px;
+      position: sticky; bottom: 0;
+      background: linear-gradient(180deg, transparent, rgba(10, 10, 15, 0.95) 30%);
+    }
+    .btn {
+      flex: 1; padding: 14px;
+      border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+    .btn-ghost { background: rgba(255, 255, 255, 0.06); color: #b4b4bc; border: 1px solid rgba(255, 255, 255, 0.08); }
+
+    .toast {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      background: rgba(99, 102, 241, 0.95); color: #fff;
+      padding: 10px 20px; border-radius: 10px;
+      font-size: 14px; z-index: 100;
+      opacity: 0; transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>资源聚合搜</span>
+      <span class="brand-sub">一次输入 · 多站同搜</span>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input id="q" class="search-input" type="search" inputmode="search" autocomplete="off"
+             placeholder="搜电影 / 剧名 / 关键词" />
+      <button id="go" class="search-btn">搜</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 输入关键词后，<b>点选你想搜的站点</b>，再点"开始搜索"，会<b>在新标签页同时打开</b>这些站点的搜索结果。
+    <br>📌 <b>点站名</b>可以直接打开该网站。
+  </div>
+
+  <div class="section" id="siteSections"></div>
+
+  <div class="actions">
+    <button id="allBtn" class="btn btn-ghost">全选</button>
+    <button id="searchBtn" class="btn btn-primary">开始搜索 🚀</button>
+  </div>
+
+<script>
+  // ====== 站点配置（基于实际测试，亲测能用的）======
+  // 模板说明：{q} 会被替换为 URL 编码后的关键词
+  const SITES = [
+    {
+      group: '网盘类',
+      color: '#6366f1',
+      items: [
+        { name: '盘搜搜',     url: 'https://m.pansoso.com/search?keyword={q}', desc: '老牌聚合 · 资源全',     logo: '盘', bg: '#f59e0b' },
+        { name: '爱搜剧',     url: 'https://www.isouju.com/s/{q}.html',         desc: '7 大网盘聚合',         logo: '剧', bg: '#ec4899' },
+        { name: '搜夸克',     url: 'https://www.soquark.com/search?q={q}',      desc: '夸克资源最全',         logo: '夸', bg: '#0ea5e9' },
+        { name: '夸克搜',     url: 'https://www.pioz.cn/search?q={q}',          desc: '夸克网盘专项',         logo: 'Q', bg: '#06b6d4' },
+        { name: '极搜剧',     url: 'https://www.jisoju.com/search?q={q}',       desc: '综合网盘 · 影视',      logo: '极', bg: '#a855f7' },
+        { name: '盘友圈',     url: 'https://panyq.com/?keyword={q}',            desc: '阿里/百度/夸克',       logo: '友', bg: '#ef4444' },
+        { name: 'PanSeeker',  url: 'https://www.panseeker.com/search?q={q}',   desc: '学术+影视老牌',        logo: 'P', bg: '#10b981' },
+      ]
+    },
+    {
+      group: '磁力类',
+      color: '#ec4899',
+      items: [
+        { name: '开心磁力',   url: 'http://kxcili.com/?keyword={q}',            desc: '中文磁力 · 老牌',     logo: '磁', bg: '#f97316' },
+        { name: '磁力搜 cili',url: 'http://cilisousuo.co/?keyword={q}',         desc: '磁力聚合搜索',         logo: '搜', bg: '#eab308' },
+      ]
+    }
+  ];
+
+  // ====== 选中状态（默认全选）======
+  const selected = new Set();
+  SITES.forEach(g => g.items.forEach(s => selected.add(s.name)));
+
+  // ====== 渲染站点列表 ======
+  function render() {
+    const root = document.getElementById('siteSections');
+    root.innerHTML = SITES.map(g => `
+      <div class="section-title">
+        <span class="dot" style="background:${g.color}"></span>
+        ${g.group} · ${g.items.length} 个站点
+      </div>
+      <div class="site-list">
+        ${g.items.map(s => `
+          <div class="site ${selected.has(s.name) ? 'active' : ''}" data-name="${s.name}" data-url="${s.url.replace('{q}', '___Q___')}">
+            <div class="logo" style="background:${s.bg}">${s.logo}</div>
+            <div class="info">
+              <div class="name">${s.name}</div>
+              <div class="desc">${s.desc}</div>
+            </div>
+            <div class="check">${selected.has(s.name) ? '✓' : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    // 绑定事件
+    document.querySelectorAll('.site').forEach(el => {
+      el.addEventListener('click', e => {
+        const name = el.dataset.name;
+        // 长按/单击 = 切换选中；单击 logo = 打开首页
+        // 这里统一单击切换选中；长按打开网站
+        if (selected.has(name)) {
+          selected.delete(name);
+          el.classList.remove('active');
+          el.querySelector('.check').textContent = '';
+        } else {
+          selected.add(name);
+          el.classList.add('active');
+          el.querySelector('.check').textContent = '✓';
+        }
+      });
+      el.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        // 右键或长按直接打开该网站首页
+        const url = el.dataset.url.replace('___Q___', '').split('?')[0].split('/s/')[0];
+        window.open(url, '_blank');
+      });
+    });
+  }
+
+  // ====== 全选/反选 ======
+  document.getElementById('allBtn').addEventListener('click', () => {
+    const allSelected = SITES.every(g => g.items.every(s => selected.has(s.name)));
+    if (allSelected) {
+      selected.clear();
+    } else {
+      SITES.forEach(g => g.items.forEach(s => selected.add(s.name)));
+    }
+    render();
+  });
+
+  // ====== 搜索 ======
+  function doSearch() {
+    const kw = document.getElementById('q').value.trim();
+    if (!kw) return showToast('请输入关键词');
+    if (selected.size === 0) return showToast('至少选一个站点');
+
+    const enc = encodeURIComponent(kw);
+    let opened = 0;
+    SITES.forEach(g => g.items.forEach(s => {
+      if (selected.has(s.name)) {
+        const url = s.url.replace('{q}', enc);
+        try { window.open(url, '_blank'); opened++; } catch (e) {}
+      }
+    }));
+
+    if (opened > 0) {
+      showToast(`已打开 ${opened} 个站点的搜索结果`);
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast show';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 200); }, 1800);
+  }
+
+  // ====== 事件 ======
+  document.getElementById('searchBtn').addEventListener('click', doSearch);
+  document.getElementById('go').addEventListener('click', doSearch);
+  document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  // ====== 启动 ======
+  render();
+</script>
+</body>
+</html>
